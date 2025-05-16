@@ -1,41 +1,29 @@
-from http.server import BaseHTTPRequestHandler
-import json
-import openai
 import os
+import openai
+from flask import Flask, request, jsonify
 
-openai.api_key = os.environ["OPENAI_API_KEY"]
+app = Flask(__name__)
 
-class handler(BaseHTTPRequestHandler):
-    def do_POST(self):
-        try:
-            content_length = int(self.headers['Content-Length'])
-            post_data = self.rfile.read(content_length)
-            body = json.loads(post_data)
+# استخدام مفتاح OpenAI من متغير البيئة
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
-            question = body.get("question", "").strip()
+@app.route("/api/ask", methods=["POST"])
+def ask():
+    data = request.get_json()
+    question = data.get("question", "")
 
-            if not question:
-                self.send_response(400)
-                self.end_headers()
-                self.wfile.write(b'{"error": "No question provided."}')
-                return
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": question}
+            ]
+        )
+        answer = response["choices"][0]["message"]["content"]
+        return jsonify({"answer": answer})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
-            response = openai.ChatCompletion.create(
-                model="gpt-3.5-turbo",
-                messages=[
-                    {"role": "system", "content": "You are a helpful assistant."},
-                    {"role": "user", "content": question}
-                ]
-            )
-
-            answer = response.choices[0].message.content.strip()
-
-            self.send_response(200)
-            self.send_header('Content-type', 'application/json')
-            self.end_headers()
-            self.wfile.write(json.dumps({"answer": answer}).encode())
-
-        except Exception as e:
-            self.send_response(500)
-            self.end_headers()
-            self.wfile.write(json.dumps({"error": str(e)}).encode())
+if __name__ == "__main__":
+    app.run()
