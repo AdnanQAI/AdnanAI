@@ -3,7 +3,7 @@ import json
 import openai
 import os
 
-openai.api_key = os.environ["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"]
+openai.api_key = os.environ["OPENAI_API_KEY"]
 
 class handler(BaseHTTPRequestHandler):
     def do_POST(self):
